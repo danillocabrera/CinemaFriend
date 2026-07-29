@@ -1,12 +1,12 @@
-// Watch-CinemaShows: detecta nuevos horarios en Kinoheld y avisa por Telegram.
-// Pensado para correr en GitHub Actions (sin depender de tu PC).
+// Watch-CinemaShows: detects new showtimes on Kinoheld and notifies via Telegram.
+// Designed to run on GitHub Actions (no dependency on your PC).
 
 const fs = require("fs");
 const path = require("path");
 
 // ======================= CONFIG =======================
 
-// Puedes vigilar uno o varios cines a la vez agregando más ids aquí.
+// You can watch one or several cinemas at once by adding more ids here.
 const CINEMA_IDS = ["635"]; // 635 = IMAX Sinsheim (Technik Museum)
 
 const URL = `https://www.kinoheld.de/ajax/getShowsForCinemas?${CINEMA_IDS.map(
@@ -27,18 +27,18 @@ async function fetchShows() {
   });
 
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status} al consultar ${URL}`);
+    throw new Error(`HTTP ${res.status} while requesting ${URL}`);
   }
 
   const data = await res.json();
   if (!data.shows) {
-    throw new Error("La respuesta no contiene 'shows'. Revisa la URL/estructura del JSON.");
+    throw new Error("Response does not contain 'shows'. Check the URL/JSON structure.");
   }
   return data.shows;
 }
 
 function loadPreviousIds() {
-  if (!fs.existsSync(STATE_FILE)) return null; // null = primera ejecución
+  if (!fs.existsSync(STATE_FILE)) return null; // null = first run
   try {
     const raw = fs.readFileSync(STATE_FILE, "utf8");
     return JSON.parse(raw);
@@ -64,7 +64,7 @@ async function sendTelegramMessage(newShows) {
     })
     .join("\n");
 
-  const text = `🎬 *Nuevos horarios disponibles:*\n\n${lines}`;
+  const text = `🎬 *New showtimes available:*\n\n${lines}`;
 
   const res = await fetch(
     `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -84,7 +84,7 @@ async function sendTelegramMessage(newShows) {
     throw new Error(`Telegram API error: ${JSON.stringify(result)}`);
   }
 
-  console.log(`Mensaje de Telegram enviado con ${newShows.length} horario(s) nuevo(s).`);
+  console.log(`Telegram message sent with ${newShows.length} new show(s).`);
 }
 
 (async () => {
@@ -95,7 +95,7 @@ async function sendTelegramMessage(newShows) {
 
     if (previousIds === null) {
       console.log(
-        `Primera ejecución: se guardan ${currentIds.length} shows como línea base. No se envía mensaje.`
+        `First run: saving ${currentIds.length} shows as baseline. No message sent.`
       );
       saveCurrentIds(currentIds);
       return;
@@ -106,10 +106,10 @@ async function sendTelegramMessage(newShows) {
     saveCurrentIds(currentIds);
 
     if (newShows.length > 0) {
-      console.log(`Se encontraron ${newShows.length} horario(s) nuevo(s).`);
+      console.log(`Found ${newShows.length} new show(s).`);
       await sendTelegramMessage(newShows);
     } else {
-      console.log(`Sin cambios. Total shows actuales: ${currentIds.length}.`);
+      console.log(`No changes. Total current shows: ${currentIds.length}.`);
     }
   } catch (err) {
     console.error("ERROR:", err.message);
